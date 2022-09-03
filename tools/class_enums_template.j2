@@ -1,0 +1,18 @@
+
+# TODO: This file is dangerous because the enums could potentially change between API versions. Should transmit as part of the JSON.
+# To regenerate this file, nagivate to the top level of the ODrive repository and run:
+#   python Firmware/interface_generator_stub.py --definitions Firmware/odrive-interface.yaml --template tools/class_enums_template.j2 --output tools/odrive_can/enums.py
+
+from enum import IntEnum, IntFlag
+
+[%- for _, enum in value_types.items() %]
+[%- if enum.is_enum %]
+
+
+# [[enum.fullname]]
+class [[(enum.parent.name if enum.name in ['Error', 'Mode', 'Protocol'] else '') + enum.name]]([% if enum.is_flags %]IntFlag[% else %]IntEnum[% endif %]):
+    [%- for k, value in enum['values'].items() %]
+    [[(k | to_macro_case).ljust(33)]] = [% if enum.is_flags %]0x[['%08x' | format(value.value)]][% else %][[value.value]][% endif %]
+    [%- endfor %]
+[%- endif %]
+[%- endfor %]

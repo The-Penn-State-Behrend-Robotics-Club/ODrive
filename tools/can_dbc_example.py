@@ -8,7 +8,7 @@ db = cantools.database.load_file("odrive-cansimple.dbc")
 
 # bus = can.Bus("vcan0", bustype="virtual")
 bus = can.Bus("can0", bustype="socketcan")
-axisID = 0x1
+axisID = 0x4
 
 print("\nRequesting AXIS_STATE_FULL_CALIBRATION_SEQUENCE (0x03) on axisID: " + str(axisID))
 msg = db.get_message_by_name('Set_Axis_State')
@@ -39,7 +39,7 @@ for msg in bus:
         if errorCode == 0x00:
             print("No errors")
         else:
-            print("Axis error!  Error code: "+str(hex(errorCode)))
+            print("Axis error!  Error code: " + str(hex(errorCode)))
         break
 
 print("\nPutting axis",axisID,"into AXIS_STATE_CLOSED_LOOP_CONTROL (0x08)...")
@@ -64,17 +64,15 @@ for msg in bus:
             print("Axis failed to enter closed loop")
         break
 
-target = 0
-
-data = db.encode_message('Set_Limits', {'Velocity_Limit':10.0, 'Current_Limit':10.0})
+data = db.encode_message('Set_Limits', {'Velocity_Limit': 10.0, 'Current_Limit': 10.0})
 msg = can.Message(arbitration_id=axisID << 5 | 0x00F, is_extended_id=False, data=data)
 bus.send(msg)
 
 t0 = time.monotonic()
 while True:
-    setpoint = 4.0 * math.sin((time.monotonic() - t0)*2)
+    setpoint = 4.0 * math.sin((time.monotonic() - t0) * 2)
     print("goto " + str(setpoint))
-    data = db.encode_message('Set_Input_Pos', {'Input_Pos':setpoint, 'Vel_FF':0.0, 'Torque_FF':0.0})
+    data = db.encode_message('Set_Input_Pos', {'Input_Pos': setpoint, 'Vel_FF': 0.0, 'Torque_FF': 0.0})
     msg = can.Message(arbitration_id=axisID << 5 | 0x00C, data=data, is_extended_id=False)
     bus.send(msg)
     time.sleep(0.01)

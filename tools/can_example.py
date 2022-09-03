@@ -1,7 +1,7 @@
 import can
 
 bus = can.Bus("can0", bustype="socketcan")
-axisID = 0x1
+axisID = 0x3
 
 print("Requesting AXIS_STATE_FULL_CALIBRATION_SEQUENCE (0x03) on axisID: " + str(axisID))
 msg = can.Message(arbitration_id=axisID << 5 | 0x07, data=[3, 0, 0, 0, 0, 0, 0, 0], dlc=8, is_extended_id=False)
@@ -18,7 +18,7 @@ print("Waiting for calibration to finish...")
 while True:
     msg = bus.recv()
     if msg.arbitration_id == (axisID << 5 | 0x01):
-        current_state = msg.data[4] | msg.data[5] << 8 | msg.data[6] << 16 | msg.data[7] << 24
+        current_state = msg.data[4]
         if current_state == 0x1:
             print("\nAxis has returned to Idle state.")
             break

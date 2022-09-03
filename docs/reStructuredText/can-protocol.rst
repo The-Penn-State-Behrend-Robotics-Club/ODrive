@@ -18,16 +18,16 @@ Configuration of the CAN parameters should be done via USB before putting the de
 
 To set the desired baud rate, use :code:`<odrv>.can.config.baud_rate = <value>`.
 
-Each axis looks like a separate node on the bus. 
-Thus, they both have the two properties :code:`can_node_id` and :code:`can_node_id_extended`. 
-The node ID can be from 0 to 63 (0x3F) inclusive, or, if extended CAN IDs are used, from 0 to 16777215 (0xFFFFFF). 
+Each axis looks like a separate node on the bus.
+Thus, they both have the two properties :code:`can_node_id` and :code:`can_node_id_extended`.
+The node ID can be from 0 to 63 (0x3F) inclusive, or, if extended CAN IDs are used, from 0 to 16777215 (0xFFFFFF).
 If you want to connect more than one ODrive on a CAN bus, you must set different node IDs for the second ODrive or they will conflict and crash the bus.
 
 Example Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code:: iPython
-        
+
     odrv0.axis0.config.can_node_id = 3
     odrv0.axis1.config.can_node_id = 1
     odrv0.can.config.baud_rate = 500000
@@ -37,8 +37,8 @@ Example Configuration
 Transport Protocol
 --------------------------------------------------------------------------------
 
-We've implemented a very basic CAN protocol that we call "CAN Simple" to get users going with ODrive. 
-This protocol is sufficiently abstracted that it is straightforward to add other protocols such as CANOpen, J1939, or Fibre over ISO-TP in the future. 
+We've implemented a very basic CAN protocol that we call "CAN Simple" to get users going with ODrive.
+This protocol is sufficiently abstracted that it is straightforward to add other protocols such as CANOpen, J1939, or Fibre over ISO-TP in the future.
 Unfortunately, implementing those protocols is a lot of work, and we wanted to give users a way to control ODrive's basic functions via CAN sooner rather than later.
 
 CAN Frame
@@ -71,9 +71,11 @@ All multibyte values are little endian (aka Intel format, aka least significant 
 
 .. note::
 
-    * These messages are call & response. The Master node sends a message with the RTR bit set, and the axis responds with the same ID and specified payload.  
-    * These CANOpen messages are reserved to avoid bus collisions with CANOpen devices.  They are not used by CAN Simple.  
-    * These messages can be sent to either address on a given ODrive board.
+    \* These messages are call & response. The Master node sends a message with the RTR bit set, and the axis responds with the same ID and specified payload.
+
+    † These CANOpen messages are reserved to avoid bus collisions with CANOpen devices.  They are not used by CAN Simple.
+
+    ‡ These messages can be sent to either address on a given ODrive board.
 
 
 Cyclic Messages
@@ -108,15 +110,14 @@ Interoperability with CANopen
 
 You can deconflict with CANopen like this:
 
-* :code:`odrv0.axis0.config.can.node_id = 0x010` - Reserves messages 0x200 through 0x21F  
+* :code:`odrv0.axis0.config.can.node_id = 0x010` - Reserves messages 0x200 through 0x21F
 * :code:`odrv0.axis1.config.can.node_id = 0x018` - Reserves messages 0x300 through 0x31F
 
-It may not be obvious, but this allows for some compatibility with CANOpen.  
+It may not be obvious, but this allows for some compatibility with CANOpen.
 Although the address space 0x200 and 0x300 correspond to receive PDO base addresses, we can guarantee they will not conflict if all CANopen node IDs are >= 32.  E.g.:
 
 * CANopen nodeID = 35 = 0x23
 * Receive PDO 0x200 + nodeID = 0x223, which does not conflict with the range [0x200 : 0x21F]
 
-Be careful that you don't assign too many nodeIDs per PDO group.  Four CAN Simple nodes (32*4) is all of the available address space of a single PDO.  
+Be careful that you don't assign too many nodeIDs per PDO group.  Four CAN Simple nodes (32*4) is all of the available address space of a single PDO.
 If the bus is strictly ODrive CAN Simple nodes, a simple sequential Node ID assignment will work fine.
-
