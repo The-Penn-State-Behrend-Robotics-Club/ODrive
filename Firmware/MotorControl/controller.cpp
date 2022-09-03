@@ -87,6 +87,32 @@ bool Controller::anticogging_calibration(float pos_estimate, float vel_estimate)
     }
 }
 
+void Controller::set_input_pos_and_steps(float const pos) {
+    input_pos_ = pos;
+    if (config_.circular_setpoints) {
+        float const range = config_.circular_setpoint_range;
+        axis_->steps_ = (int64_t)(fmodf_pos(pos, range) / range * config_.steps_per_circular_range);
+    } else {
+        axis_->steps_ = (int64_t)(pos * config_.steps_per_circular_range);
+    }
+}
+
+bool Controller::control_mode_updated() {
+    if (config_.control_mode >= CONTROL_MODE_POSITION_CONTROL) {
+        std::optional<float> estimate = (config_.circular_setpoints ?
+                                pos_estimate_circular_src_ :
+                                pos_estimate_linear_src_).any();
+        if (!estimate.has_value()) {
+            return false;
+        }
+
+        pos_setpoint_ = *estimate;
+        set_input_pos_and_steps(*estimate);
+    }
+    return true;
+}
+
+
 void Controller::update_filter_gains() {
     float bandwidth = std::min(config_.input_filter_bandwidth, 0.25f * current_meas_hz);
     input_filter_ki_ = 2.0f * bandwidth;  // basic conversion to discrete time
@@ -109,11 +135,15 @@ bool Controller::update() {
     std::optional<float> anticogging_vel_estimate = axis_->encoder_.vel_estimate_.present();
 
     if (axis_->step_dir_active_) {
-        if (!pos_wrap.has_value()) {
-            set_error(ERROR_INVALID_CIRCULAR_RANGE);
-            return false;
+        if (config_.circular_setpoints) {
+            if (!pos_wrap.has_value()) {
+                set_error(ERROR_INVALID_CIRCULAR_RANGE);
+                return false;
+            }
+            input_pos_ = (float)(axis_->steps_ % config_.steps_per_circular_range) * (*pos_wrap / (float)(config_.steps_per_circular_range));
+        } else {
+            input_pos_ = (float)(axis_->steps_) / (float)(config_.steps_per_circular_range);
         }
-        input_pos_ = (float)(axis_->steps_ % config_.steps_per_circular_range) * (*pos_wrap / (float)(config_.steps_per_circular_range));
     }
 
     if (config_.anticogging.calib_anticogging) {
@@ -226,9 +256,9 @@ bool Controller::update() {
             autotuning_phase_ = wrap_pm_pi(autotuning_phase_ + (2.0f * M_PI * autotuning_.frequency * current_meas_period));
             float c = our_arm_cos_f32(autotuning_phase_);
             float s = our_arm_sin_f32(autotuning_phase_);
-            pos_setpoint_ = autotuning_.pos_amplitude * s; // + pos_amp_c * c
-            vel_setpoint_ = autotuning_.vel_amplitude * c;
-            torque_setpoint_ = autotuning_.torque_amplitude * -s;
+            pos_setpoint_ = input_pos_ + autotuning_.pos_amplitude * s; // + pos_amp_c * c
+            vel_setpoint_ = input_vel_ + autotuning_.vel_amplitude * c;
+            torque_setpoint_ = input_torque_ + autotuning_.torque_amplitude * -s;
         } break;
         default: {
             set_error(ERROR_INVALID_INPUT_MODE);

@@ -69,15 +69,15 @@ void CANSimple::do_command(Axis& axis, const can_Message_t& msg) {
             estop_callback(axis, msg);
             break;
         case MSG_GET_MOTOR_ERROR:
-            if (msg.rtr)
+            if (msg.rtr || msg.len == 0)
                 get_motor_error_callback(axis);
             break;
         case MSG_GET_ENCODER_ERROR:
-            if (msg.rtr)
+            if (msg.rtr || msg.len == 0)
                 get_encoder_error_callback(axis);
             break;
         case MSG_GET_SENSORLESS_ERROR:
-            if (msg.rtr)
+            if (msg.rtr || msg.len == 0)
                 get_sensorless_error_callback(axis);
             break;
         case MSG_SET_AXIS_NODE_ID:
@@ -90,11 +90,11 @@ void CANSimple::do_command(Axis& axis, const can_Message_t& msg) {
             set_axis_startup_config_callback(axis, msg);
             break;
         case MSG_GET_ENCODER_ESTIMATES:
-            if (msg.rtr)
+            if (msg.rtr || msg.len == 0)
                 get_encoder_estimates_callback(axis);
             break;
         case MSG_GET_ENCODER_COUNT:
-            if (msg.rtr)
+            if (msg.rtr || msg.len == 0)
                 get_encoder_count_callback(axis);
             break;
         case MSG_SET_INPUT_POS:
@@ -125,18 +125,18 @@ void CANSimple::do_command(Axis& axis, const can_Message_t& msg) {
             set_traj_vel_limit_callback(axis, msg);
             break;
         case MSG_GET_IQ:
-            if (msg.rtr)
+            if (msg.rtr || msg.len == 0)
                 get_iq_callback(axis);
             break;
         case MSG_GET_SENSORLESS_ESTIMATES:
-            if (msg.rtr)
+            if (msg.rtr || msg.len == 0)
                 get_sensorless_estimates_callback(axis);
             break;
         case MSG_RESET_ODRIVE:
             NVIC_SystemReset();
             break;
         case MSG_GET_VBUS_VOLTAGE:
-            if (msg.rtr)
+            if (msg.rtr || msg.len == 0)
                 get_vbus_voltage_callback(axis);
             break;
         case MSG_CLEAR_ERRORS:
@@ -205,7 +205,7 @@ void CANSimple::set_axis_nodeid_callback(Axis& axis, const can_Message_t& msg) {
 }
 
 void CANSimple::set_axis_requested_state_callback(Axis& axis, const can_Message_t& msg) {
-    axis.requested_state_ = static_cast<Axis::AxisState>(can_getSignal<int32_t>(msg, 0, 16, true));
+    axis.requested_state_ = static_cast<Axis::AxisState>(can_getSignal<int32_t>(msg, 0, 32, true));
 }
 
 void CANSimple::set_axis_startup_config_callback(Axis& axis, const can_Message_t& msg) {
@@ -253,7 +253,7 @@ bool CANSimple::get_encoder_count_callback(const Axis& axis) {
 }
 
 void CANSimple::set_input_pos_callback(Axis& axis, const can_Message_t& msg) {
-    axis.controller_.input_pos_ = can_getSignal<float>(msg, 0, 32, true);
+    axis.controller_.set_input_pos_and_steps(can_getSignal<float>(msg, 0, 32, true));
     axis.controller_.input_vel_ = can_getSignal<int16_t>(msg, 32, 16, true, 0.001f, 0);
     axis.controller_.input_torque_ = can_getSignal<int16_t>(msg, 48, 16, true, 0.001f, 0);
     axis.controller_.input_pos_updated();
@@ -269,8 +269,10 @@ void CANSimple::set_input_torque_callback(Axis& axis, const can_Message_t& msg) 
 }
 
 void CANSimple::set_controller_modes_callback(Axis& axis, const can_Message_t& msg) {
-    axis.controller_.config_.control_mode = static_cast<Controller::ControlMode>(can_getSignal<int32_t>(msg, 0, 32, true));
+    Controller::ControlMode const mode = static_cast<Controller::ControlMode>(can_getSignal<int32_t>(msg, 0, 32, true));
+    axis.controller_.config_.control_mode = static_cast<Controller::ControlMode>(mode);
     axis.controller_.config_.input_mode = static_cast<Controller::InputMode>(can_getSignal<int32_t>(msg, 32, 32, true));
+    axis.controller_.control_mode_updated();
 }
 
 void CANSimple::set_limits_callback(Axis& axis, const can_Message_t& msg) {
@@ -319,11 +321,11 @@ bool CANSimple::get_iq_callback(const Axis& axis) {
     if (!Idq_setpoint.has_value()) {
         Idq_setpoint = {0.0f, 0.0f};
     }
-
-    static_assert(sizeof(float) == sizeof(Idq_setpoint->first));
+    
     static_assert(sizeof(float) == sizeof(Idq_setpoint->second));
-    can_setSignal<float>(txmsg, Idq_setpoint->first, 0, 32, true);
-    can_setSignal<float>(txmsg, Idq_setpoint->second, 32, 32, true);
+    static_assert(sizeof(float) == sizeof(axis.motor_.current_control_.Iq_measured_));
+    can_setSignal<float>(txmsg, Idq_setpoint->second, 0, 32, true);
+    can_setSignal<float>(txmsg, axis.motor_.current_control_.Iq_measured_, 32, 32, true);
 
     return canbus_->send_message(txmsg);
 }
