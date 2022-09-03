@@ -15,8 +15,8 @@ import sys
 
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('./figures'))
-sys.path.insert(0, os.path.abspath('../exts')) # needed for fibre_autodoc extension
-sys.path.insert(0, os.path.abspath('../../tools/fibre-tools')) # needed for fibre_autodoc extension
+sys.path.insert(0, os.path.abspath('./exts')) # needed for fibre_autodoc extension
+sys.path.insert(0, os.path.abspath('../tools/fibre-tools')) # needed for fibre_autodoc extension
 
 
 # -- Project information -----------------------------------------------------
@@ -24,9 +24,6 @@ sys.path.insert(0, os.path.abspath('../../tools/fibre-tools')) # needed for fibr
 project = 'ODrive Documentation'
 copyright = '2021, ODrive Robotics'
 author = 'ODrive Robotics'
-
-# The full version, including alpha/beta/rc tags
-release = '0.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -41,7 +38,8 @@ extensions = ['sphinx_tabs.tabs',
     'sphinx.ext.autodoc', # Generate documentation from Python modules
     'sphinx.ext.autosummary', # Generate summary tables for Python documentation
     'sphinx.ext.intersphinx', # Hyperlinks to external projects (such as Python standard library)
-    'fibre_autodoc'# Generate summary tables for Python documentation
+    'fibre_autodoc', # Generate summary tables for Python documentation
+    'myst_parser' # render CHANGELOG markdown file
     
 ]
 
@@ -60,14 +58,26 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 #
 # html_theme = 'alabaster'
 html_theme = "sphinx_rtd_theme"
+html_theme_options = {
+    'analytics_id':'UA-93396600-3',
+    'style_external_links': True,
+    'display_version': True,
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
-fibre_interface_files = ['../../Firmware/odrive-interface.yaml']
+fibre_interface_files = ['../Firmware/odrive-interface.yaml']
 
 autosummary_generate = False
 
 intersphinx_mapping = {'python': ('https://docs.python.org/3', None)}
+
+html_js_files = [
+    'https://docs.odriverobotics.com/docsInject.js'
+]
+
+version = "0.5.4"
+release = version
